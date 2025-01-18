@@ -6,7 +6,16 @@
 ## Before compile, you can modify build.sh for eaiser preparation here
 ##########
 # install libclang for our python usage, do this for all oss-fuzz projects
-pip3 install libclang
+# make sure pip3 is installed
+if ! command -v pip3 &> /dev/null; then
+    apt-get update && apt-get install -y python3-pip
+fi
+
+# install libclang
+pip3 install libclang==15.0.6.1 -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+
+
+
 export MAKEFLAGS="-j`nproc`"
 set -eux
 # FILL HERE

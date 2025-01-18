@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 
 import docker
 from ipdb import launch_ipdb_on_exception
@@ -25,15 +26,19 @@ def get_vanilla_ossfuzz_imgname(target):
 def get_base_imgname(target):
 	return 'gcr.io/oss-fuzz/%s:latest' % (target)
 
-def get_image(client, imgname):
+def get_image(client, imgname, retries=3, delay=1):
 	img = None
-
-	try:
-		img = client.images.get(imgname)
-
-	except docker.errors.ImageNotFound as ex:
-		img = None
-
+	for attempt in range(retries):
+		try:
+			img = client.images.get(imgname)
+			break
+		except docker.errors.ImageNotFound as ex:
+			img = None
+			if attempt < retries - 1:
+				logger.warning('Image %s not found, retrying in %s seconds...' % (imgname, delay))
+				time.sleep(delay)
+			else:
+				logger.error('Image %s not found after %s attempts' % (imgname, retries))
 	return img
 
 def is_fuzzdrivergpt_image_exist(target):
