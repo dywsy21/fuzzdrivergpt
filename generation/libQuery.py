@@ -27,6 +27,7 @@ def doquery(model, query, key, orgid):
 		try:
 			openai.organization = orgid
 			openai.api_key = key
+			openai.api_base = "https://api.zhiyunai168.com/v1"
 			#resp = openai.Completion.create(engine=model, prompt=query, temperature=0.1, max_tokens=max_tokens, n=10)
 			resp = openai.ChatCompletion.create(model=model, messages=[
 				{"role": "system", "content": "You are a helpful assistant."},
