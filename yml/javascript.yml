@@ -1,0 +1,14 @@
+targets:
+  # Template for JavaScript fuzz targets
+  javascript-template:
+    language: "javascript"
+    compile: []  # No compilation needed for JS
+    build: ""    # No build step needed
+    run: "node OUTEXE -t 60 -d SEEDDIR"
+    imagename: "fuzzdrivergpt-jsfuzz"
+    precode: |
+      const fs = require('fs');
+      const path = require('path');
+      const { FuzzedDataProvider } = require('@jazzer.js/core');
+    headers: []
+    apiblocklist: []

@@ -1,0 +1,14 @@
+targets:
+  jsfuzz-template:
+    language: "javascript"
+    compile: []  # No compilation needed for JS
+    build: ""    # No build step needed
+    run: "node OUTEXE -t 60 -d SEEDDIR"  # Run with 60s timeout
+    imagename: "fuzzdrivergpt-jsfuzz"
+    precode: |
+      const fs = require('fs');
+      const path = require('path');
+      // Common JS fuzzing imports
+      const { FuzzedDataProvider } = require('@jazzer.js/core');
+    headers: []
+    apiblocklist: []

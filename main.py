@@ -123,7 +123,7 @@ def main_workflow(language, model, target, funcsig, querystrategy, disablevalida
 def main():
 	# parse args
 	parser = argparse.ArgumentParser(description='fuzzdrivergpt, a GPT-based fuzz driver generator.')
-	parser.add_argument('-l', '--language', required=True, choices=['c'], help='language')
+	parser.add_argument('-l', '--language', required=True, choices=['c', 'javascript', 'python'], help='language')
 	parser.add_argument('-m', '--model', required=True, choices=['gpt-4-0314', 'gpt-4-0613', 'gpt-3.5-turbo-0613', 'gpt-3.5-turbo-0301'], help='supported GPT models')
 	parser.add_argument('-t', '--target', required=True, help='target project')
 	parser.add_argument('-f', '--funcsig', required=True, help='function signature')

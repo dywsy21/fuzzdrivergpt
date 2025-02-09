@@ -28,113 +28,121 @@ def gen_func_declaration(info):
 	return 'extern %s %s(%s);' % (ret, fullname, args)
 
 def gen_NAIVE_queries(cfg, targetapis, apiusages, to_chatgpt):
-	queries = []
+    queries = []
 
-	for apisig in targetapis:
-		mangled_name, info = apisig, apiusages[apisig]['apiinfo']
+    for apisig in targetapis:
+        mangled_name, info = apisig, apiusages[apisig]['apiinfo']
 
-		# naive context generation
-		fullname = info['fullname']
-		path = info['header']
-		include = '#include "%s"' % (get_include_path(path, info['prefix']))
-		# this is for cpp
-		#tail = '// the following function fuzzes %s\nextern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {\n' % (fullname)
-		# this is for c
-		tail = '// the following function fuzzes %s\nextern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {\n' % (fullname)
+        # naive context generation 
+        fullname = info['fullname']
+        path = info['header']
+        include = ''
+        tail = ''
 
-		query = '\n\n'.join([ tail ])
+        if cfg.language == 'c':
+            include = '#include "%s"' % (get_include_path(path, info['prefix']))
+            tail = '// the following function fuzzes %s\nextern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {\n' % (fullname)
+        elif cfg.language == 'javascript':
+            include = "const { %s } = require('%s');" % (fullname, path)
+            tail = '// the following function fuzzes %s\nmodule.exports.fuzz = function(buf) {\n' % (fullname)
+        elif cfg.language == 'python':
+            include = "from %s import %s" % (path.replace('/', '.').rstrip('.py'), fullname)
+            tail = '# the following function fuzzes %s\ndef TestOneInput(data):\n' % (fullname)
 
-		queryMode = "NAIVE"
-		if to_chatgpt:
-			query = '// The following is a fuzz driver written in C language, complete the implementation. Output the continued code in reply only.\n\n' + query
-			queryMode = "NAIVE-CHATGPT"
+        query = '\n\n'.join([ tail ])
 
-		queries.append({
-			'id': '%s-%s-%s-%s' % (cfg.language, cfg.target, mangled_name, queryMode),
-			'language': cfg.language,
-			'queryMode': queryMode,
-			'query': query,
-			'target': cfg.target,
-			'info': info,
-			'naiveIncluded': include,
-		})
+        queryMode = "NAIVE"
+        if to_chatgpt:
+            if cfg.language == 'c':
+                query = '// The following is a fuzz driver written in C language, complete the implementation. Output the continued code in reply only.\n\n' + query
+            elif cfg.language == 'javascript':  
+                query = '// The following is a fuzz driver written in JavaScript language, complete the implementation. Output the continued code in reply only.\n\n' + query
+            elif cfg.language == 'python':
+                query = '# The following is a fuzz driver written in Python language, complete the implementation. Output the continued code in reply only.\n\n' + query
+            queryMode = "NAIVE-CHATGPT"
 
-		#input('Press ENTER to continue\n')
-		#print(query)
-	
-	return queries
+        queries.append({
+            'id': '%s-%s-%s-%s' % (cfg.language, cfg.target, mangled_name, queryMode),
+            'language': cfg.language,
+            'queryMode': queryMode,
+            'query': query,
+            'target': cfg.target,
+            'info': info,
+            'naiveIncluded': include,
+        })
+    
+    return queries
 
 def gen_XXBACTX_queries(cfg, targetapis, apiusages, to_chatgpt, mode):
-	queries = []
+    queries = []
 
-	for apisig in targetapis:
-		mangled_name, info = apisig, apiusages[apisig]['apiinfo']
+    for apisig in targetapis:
+        mangled_name, info = apisig, apiusages[apisig]['apiinfo']
 
-		# basic context generation
+        # basic context generation
+        path = info['header']
+        include = ''
+        func_decl = ''
+        tail = ''
 
-		# 1. infer includes
-		#
-		# only include the directly related file
-		path = info['header']
-		include = '#include "%s"' % (get_include_path(path, info['prefix']))
-		#sig = '/include/'
-		#include = '#include "%s"' % (path[path.find(sig) + len(sig):])
+        if cfg.language == 'c':
+            include = '#include "%s"' % (get_include_path(path, info['prefix']))
+            func_decl = gen_func_declaration(info)
+            tail = '// the following function fuzzes %s\nextern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {\n' % (info['fullname'])
+        elif cfg.language == 'javascript':
+            include = "const { %s } = require('%s');" % (info['fullname'], path)
+            func_decl = "// %s: %s\n// Parameters: %s" % (info['fullname'], info['ret'], ', '.join(['%s: %s' % (arg[1], arg[0]) for arg in info['args']]))
+            tail = '// the following function fuzzes %s\nmodule.exports.fuzz = function(buf) {\n' % (info['fullname'])
+        elif cfg.language == 'python':
+            include = "from %s import %s" % (path.replace('/', '.').rstrip('.py'), info['fullname'])
+            func_decl = "# %s: %s\n# Parameters: %s" % (info['fullname'], info['ret'], ', '.join(['%s: %s' % (arg[1], arg[0]) for arg in info['args']]))
+            tail = '# the following function fuzzes %s\ndef TestOneInput(data):\n' % (info['fullname'])
 
-		## includes all headers currently, can do smart infer & include later
-		#includes = []
-		#for header in cfg.headers:
-		#	sig = '/include/'
-		#	includes.append( '#include "%s"' % (header[header.find(sig) + len(sig):]) )
-		#include = '\n'.join(includes)
+        query = '\n\n'.join([include, func_decl, tail])
+        if mode == 'DOCTX':
+            if ('apidoc' in apiusages[apisig]) and (len(apiusages[apisig]['apidoc']) > 0):
+                # randomly choose one doc from given
+                doc = random.choice(apiusages[apisig]['apidoc'])
+                query = '\n\n'.join([include, doc, func_decl, tail])
+            else:
+                # we do not generate DOCTX queries if there is no doc
+                continue
 
-		# 2. func declaration
-		func_decl = gen_func_declaration(info)
+        if mode == 'SMKTST':
+            queryMode = 'SMKTST'
+        elif mode == 'BACTX':
+            queryMode = "BACTX"
+            if to_chatgpt:
+                if cfg.language == 'c':
+                    query = '// The following is a fuzz driver written in C language, complete the implementation. Output the continued code in reply only.\n\n' + query
+                elif cfg.language == 'javascript':
+                    query = '// The following is a fuzz driver written in JavaScript language, complete the implementation. Output the continued code in reply only.\n\n' + query
+                elif cfg.language == 'python':
+                    query = '# The following is a fuzz driver written in Python language, complete the implementation. Output the continued code in reply only.\n\n' + query
+                queryMode = "BACTX-CHATGPT"
+        elif mode == 'DOCTX':
+            queryMode = "DOCTX"
+            if to_chatgpt:
+                if cfg.language == 'c':
+                    query = '// The following is a fuzz driver written in C language, complete the implementation. Output the continued code in reply only.\n\n' + query
+                elif cfg.language == 'javascript':
+                    query = '// The following is a fuzz driver written in JavaScript language, complete the implementation. Output the continued code in reply only.\n\n' + query
+                elif cfg.language == 'python':
+                    query = '# The following is a fuzz driver written in Python language, complete the implementation. Output the continued code in reply only.\n\n' + query
+                queryMode = "DOCTX-CHATGPT"
+        else:
+            raise Exception('Unknown mode: %s' % (mode))
 
-		# 3. tail
-		fullname = info['fullname']
-		# this is for cpp
-		#tail = '// the following function fuzzes %s\nextern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {\n' % (fullname)
-		# this is for c
-		tail = '// the following function fuzzes %s\nextern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {\n' % (fullname)
+        queries.append({
+            'id': '%s-%s-%s-%s' % (cfg.language, cfg.target, mangled_name, queryMode),
+            'language': cfg.language,
+            'queryMode': queryMode,
+            'query': query,
+            'target': cfg.target,
+            'info': info,
+        })
 
-		query = '\n\n'.join([include, func_decl, tail])
-		if mode == 'DOCTX':
-			if ('apidoc' in apiusages[apisig]) and (len(apiusages[apisig]['apidoc']) > 0):
-				# randomly choose one doc from given
-				doc = random.choice(apiusages[apisig]['apidoc'])
-				query = '\n\n'.join([include, doc, func_decl, tail])
-			else:
-				# we do not generate DOCTX queries if there is no doc
-				continue
-
-		if mode == 'SMKTST':
-			queryMode = 'SMKTST'
-		elif mode == 'BACTX':
-			queryMode = "BACTX"
-			if to_chatgpt:
-				query = '// The following is a fuzz driver written in C language, complete the implementation. Output the continued code in reply only.\n\n' + query
-				queryMode = "BACTX-CHATGPT"
-		elif mode == 'DOCTX':
-			queryMode = "DOCTX"
-			if to_chatgpt:
-				query = '// The following is a fuzz driver written in C language, complete the implementation. Output the continued code in reply only.\n\n' + query
-				queryMode = "DOCTX-CHATGPT"
-		else:
-			raise Exception('Unknown mode: %s' % (mode))
-
-		queries.append({
-			'id': '%s-%s-%s-%s' % (cfg.language, cfg.target, mangled_name, queryMode),
-			'language': cfg.language,
-			'queryMode': queryMode,
-			'query': query,
-			'target': cfg.target,
-			'info': info,
-		})
-
-		#input('Press ENTER to continue\n')
-		#print(query)
-	
-	return queries
+    return queries
 
 def gen_usageid(example_files, example_funcs, usage_file, usage_func):
 	example_files = set(example_files)

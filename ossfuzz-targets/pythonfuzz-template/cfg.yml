@@ -1,0 +1,16 @@
+targets:
+  pythonfuzz-template:
+    language: "python"
+    compile: []  # No compilation needed
+    build: ""    # No build step needed
+    run: "python3 OUTEXE --timeout 60 SEEDDIR"  # Run with 60s timeout
+    imagename: "fuzzdrivergpt-pythonfuzz"
+    precode: |
+      import atheris
+      import sys
+      import struct
+      # Common Python fuzzing imports and setup
+      def TestOneInput(data):
+          fdp = atheris.FuzzedDataProvider(data)
+    headers: []
+    apiblocklist: []

@@ -1,0 +1,12 @@
+targets:
+  lodash-js:
+    language: "javascript"
+    compile: []
+    build: ""
+    run: "node OUTEXE -t 60 -d SEEDDIR"
+    imagename: "fuzzdrivergpt-jsfuzz"
+    precode: |
+      const _ = require('lodash');
+      const { FuzzedDataProvider } = require('@jazzer.js/core');
+    headers: []
+    apiblocklist: []

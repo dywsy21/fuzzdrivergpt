@@ -1,0 +1,15 @@
+targets:
+  numpy-py:
+    language: "python"
+    compile: []
+    build: ""
+    run: "python3 OUTEXE --timeout 60 SEEDDIR"
+    imagename: "fuzzdrivergpt-pythonfuzz"
+    precode: |
+      import numpy as np
+      import atheris
+      import sys
+      import struct
+      # Common Python fuzzing imports and setup
+    headers: []
+    apiblocklist: []

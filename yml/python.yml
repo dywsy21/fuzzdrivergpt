@@ -1,0 +1,18 @@
+targets:
+  # Template for Python fuzz targets
+  python-template:
+    language: "python"
+    compile: []  # No compilation needed
+    build: ""    # No build step needed
+    run: "python3 OUTEXE --timeout 60 SEEDDIR"
+    imagename: "fuzzdrivergpt-pythonfuzz"
+    precode: |
+      import atheris
+      import sys
+      import struct
+      # For DataProvider functionality
+      fdp = atheris.FuzzedDataProvider(input_bytes)
+    headers: []
+
+
+    apiblocklist: []
