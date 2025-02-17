@@ -33,6 +33,8 @@ def configure_log(loglevel):
 def init_log():
 	logging.config.fileConfig(FDGPT_LOGCONF, disable_existing_loggers=False)
 
+# root dir
+FDGPT_ROOT = get_proj_dir()
 # base dir
 FDGPT_DIR = get_proj_dir()
 # work dir
